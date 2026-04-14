@@ -15,7 +15,14 @@ jobs:
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ github.ref_name }} --draft --title "${{ github.ref_name }}"
+        run: |
+          gh release create ${{ github.ref_name }} --draft --title "${{ github.ref_name }}" --notes "## 安装说明
+
+          **macOS 用户：** 首次打开如提示\"已损坏\"，请在终端执行：
+          \`\`\`bash
+          xattr -cr /Applications/EnvBox.app
+          \`\`\`
+          然后重新打开即可。"
 
   build:
     needs: create-release
