@@ -72,7 +72,46 @@ function checkForUpdatesManually() {
 function setupAutoUpdater() {
   if (process.env.VITE_DEV_SERVER_URL) return
 
-  autoUpdater.autoDownload = true
+  if (process.platform === 'darwin') {
+    // macOS 未签名无法自动更新，改为检测新版本后引导下载
+    autoUpdater.autoDownload = false
+
+    autoUpdater.on('update-available', (info) => {
+      dialog.showMessageBox(mainWindow!, {
+        type: 'info',
+        title: '发现新版本',
+        message: `新版本 v${info.version} 已发布，是否前往下载？`,
+        buttons: ['稍后', '前往下载'],
+        defaultId: 1,
+      }).then(({ response }) => {
+        if (response === 1) {
+          require('electron').shell.openExternal('https://github.com/ericzzhou/envbox/releases/latest')
+        }
+      })
+    })
+  } else {
+    autoUpdater.autoDownload = true
+
+    autoUpdater.on('update-available', (info) => {
+      if (isManualCheck) {
+        dialog.showMessageBox({ type: 'info', title: '检查更新', message: `发现新版本 v${info.version}，正在后台下载...` })
+      }
+    })
+
+    autoUpdater.on('update-downloaded', () => {
+      isManualCheck = false
+      dialog.showMessageBox(mainWindow!, {
+        type: 'info',
+        title: '更新就绪',
+        message: '新版本已下载完成，重启应用即可安装更新。',
+        buttons: ['稍后重启', '立即重启'],
+        defaultId: 1,
+      }).then(({ response }) => {
+        if (response === 1) autoUpdater.quitAndInstall()
+      })
+    })
+  }
+
   autoUpdater.autoInstallOnAppQuit = true
 
   autoUpdater.on('update-not-available', () => {
@@ -82,30 +121,11 @@ function setupAutoUpdater() {
     }
   })
 
-  autoUpdater.on('update-available', (info) => {
-    if (isManualCheck) {
-      dialog.showMessageBox({ type: 'info', title: '检查更新', message: `发现新版本 v${info.version}，正在后台下载...` })
-    }
-  })
-
   autoUpdater.on('error', (err) => {
     if (isManualCheck) {
       isManualCheck = false
       dialog.showMessageBox({ type: 'error', title: '检查更新', message: `检查更新失败：${err?.message || '未知错误'}` })
     }
-  })
-
-  autoUpdater.on('update-downloaded', () => {
-    isManualCheck = false
-    dialog.showMessageBox(mainWindow!, {
-      type: 'info',
-      title: '更新就绪',
-      message: '新版本已下载完成，重启应用即可安装更新。',
-      buttons: ['稍后重启', '立即重启'],
-      defaultId: 1,
-    }).then(({ response }) => {
-      if (response === 1) autoUpdater.quitAndInstall()
-    })
   })
 
   // 启动后静默检查更新
