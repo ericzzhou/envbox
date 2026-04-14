@@ -63,7 +63,7 @@ function createTray() {
   const menu = Menu.buildFromTemplate([
     { label: '打开 EnvBox', click: () => mainWindow?.show() },
     { type: 'separator' },
-    { label: '检查更新', click: () => autoUpdater.checkForUpdates() },
+    { label: '检查更新', click: () => checkForUpdatesManually() },
     { type: 'separator' },
     { label: '退出', click: () => { isQuitting = true; tray?.destroy(); tray = null; app.quit() } }
   ])
@@ -71,11 +71,36 @@ function createTray() {
   tray.on('double-click', () => mainWindow?.show())
 }
 
+let isManualCheck = false
+
+function checkForUpdatesManually() {
+  isManualCheck = true
+  autoUpdater.checkForUpdates().catch(() => {
+    isManualCheck = false
+    dialog.showMessageBox({ type: 'error', title: '检查更新', message: '检查更新失败，请检查网络连接。' })
+  })
+}
+
 function setupAutoUpdater() {
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
+  autoUpdater.on('update-not-available', () => {
+    if (isManualCheck) {
+      isManualCheck = false
+      dialog.showMessageBox({ type: 'info', title: '检查更新', message: '当前已是最新版本。' })
+    }
+  })
+
+  autoUpdater.on('error', () => {
+    if (isManualCheck) {
+      isManualCheck = false
+      dialog.showMessageBox({ type: 'error', title: '检查更新', message: '检查更新失败，请稍后重试。' })
+    }
+  })
+
   autoUpdater.on('update-downloaded', () => {
+    isManualCheck = false
     dialog.showMessageBox(mainWindow!, {
       type: 'info',
       title: '更新就绪',
