@@ -12,6 +12,15 @@
 - **系统托盘**：关闭最小化到托盘，托盘常驻
 - **自动更新**：静默下载，提示重启安装
 
+## 安装
+
+从 [GitHub Releases](https://github.com/ericzzhou/envbox/releases) 下载对应平台的安装包。
+
+**macOS 首次打开：** 由于未进行 Apple 签名，首次打开可能被 Gatekeeper 拦截，执行以下命令后重新打开：
+```bash
+xattr -cr /Applications/EnvBox.app
+```
+
 ## 开发
 
 ```bash
