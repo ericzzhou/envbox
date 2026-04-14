@@ -61,6 +61,8 @@ function createTray() {
   tray = new Tray(icon)
   tray.setToolTip('EnvBox - 环境变量管理')
   const menu = Menu.buildFromTemplate([
+    { label: `EnvBox v${app.getVersion()}`, enabled: false },
+    { type: 'separator' },
     { label: '打开 EnvBox', click: () => mainWindow?.show() },
     { type: 'separator' },
     { label: '检查更新', click: () => checkForUpdatesManually() },

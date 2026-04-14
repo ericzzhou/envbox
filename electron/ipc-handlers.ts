@@ -27,6 +27,8 @@ function handleError(err: unknown): { success: false; error: string } {
 }
 
 export function registerIpcHandlers() {
+  ipcMain.handle('get-platform', () => process.platform)
+
   ipcMain.handle('detect-shell', () => detectShell())
 
   ipcMain.handle('get-env-files', (_e, scope: 'user' | 'system') => {
@@ -94,6 +96,44 @@ export function registerIpcHandlers() {
       } finally {
         if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath)
       }
+    } catch (err: unknown) {
+      return handleError(err)
+    }
+  })
+
+  // Windows 注册表操作
+  ipcMain.handle('win-reg-set', async (_e, scope: 'user' | 'system', key: string, value: string) => {
+    try {
+      const regPath = scope === 'user'
+        ? 'HKCU\\Environment'
+        : 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+      const type = value.includes('%') ? 'REG_EXPAND_SZ' : 'REG_SZ'
+      const cmd = `reg add "${regPath}" /v "${key}" /t ${type} /d "${value}" /f`
+      if (scope === 'system') {
+        execSync(`powershell -Command "Start-Process cmd -ArgumentList '/c','${cmd.replace(/'/g, "''")}' -Verb RunAs -Wait"`, { timeout: 30000 })
+      } else {
+        execSync(cmd, { encoding: 'utf-8', timeout: 5000 })
+      }
+      // 广播环境变量变更
+      execSync(`powershell -Command "Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition '[DllImport(\\\"user32.dll\\\", SetLastError = true, CharSet = CharSet.Auto)]public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; $HWND_BROADCAST = [IntPtr]0xffff; $WM_SETTINGCHANGE = 0x1a; $result = [UIntPtr]::Zero; [Win32.NativeMethods]::SendMessageTimeout($HWND_BROADCAST, $WM_SETTINGCHANGE, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$result)"`, { timeout: 10000 })
+      return { success: true }
+    } catch (err: unknown) {
+      return handleError(err)
+    }
+  })
+
+  ipcMain.handle('win-reg-delete', async (_e, scope: 'user' | 'system', key: string) => {
+    try {
+      const regPath = scope === 'user'
+        ? 'HKCU\\Environment'
+        : 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+      const cmd = `reg delete "${regPath}" /v "${key}" /f`
+      if (scope === 'system') {
+        execSync(`powershell -Command "Start-Process cmd -ArgumentList '/c','${cmd.replace(/'/g, "''")}' -Verb RunAs -Wait"`, { timeout: 30000 })
+      } else {
+        execSync(cmd, { encoding: 'utf-8', timeout: 5000 })
+      }
+      return { success: true }
     } catch (err: unknown) {
       return handleError(err)
     }

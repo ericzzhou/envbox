@@ -2,12 +2,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { Table, List, Typography, Splitter, Tag, Empty, Spin, Badge, Tooltip, Button, message } from 'antd'
 import { FileTextOutlined, FolderOpenOutlined, SaveOutlined } from '@ant-design/icons'
 import Editor from '@monaco-editor/react'
+import WinEnvTab from './WinEnvTab'
 import type { EnvVar, EnvFileInfo, ScanResult, ShellType } from '../types/electron'
 
 const { Text } = Typography
 const api = window.electronAPI
 
 export default function UserEnvTab() {
+  const [platform, setPlatform] = useState<string>('')
+
+  useEffect(() => { api.invoke('get-platform').then((p) => setPlatform(p as string)) }, [])
+
+  if (!platform) return <Spin style={{ display: 'block', margin: '80px auto' }} />
+  if (platform === 'win32') return <WinEnvTab scope="user" />
+
+  return <UnixUserEnvTab />
+}
+
+function UnixUserEnvTab() {
   const [shell, setShell] = useState<ShellType>('unknown')
   const [files, setFiles] = useState<EnvFileInfo[]>([])
   const [vars, setVars] = useState<EnvVar[]>([])
