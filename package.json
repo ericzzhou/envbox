@@ -50,6 +50,10 @@
     "win": {
       "target": "nsis"
     },
+    "linux": {
+      "target": "AppImage",
+      "category": "Development"
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
