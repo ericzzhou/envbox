@@ -1,0 +1,38 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            args: --mac
+          - os: windows-latest
+            args: --win
+          - os: ubuntu-latest
+            args: --linux
+
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build & Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder ${{ matrix.args }} --publish always
