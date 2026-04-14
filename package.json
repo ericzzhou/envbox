@@ -57,6 +57,8 @@
     },
     "publish": {
       "provider": "github",
+      "owner": "ericzzhou",
+      "repo": "envbox",
       "releaseType": "release"
     }
   }
