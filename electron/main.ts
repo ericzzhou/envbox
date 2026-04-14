@@ -62,6 +62,7 @@ function checkForUpdatesManually() {
     return
   }
   isManualCheck = true
+  dialog.showMessageBox({ type: 'info', title: '检查更新', message: '正在检查更新...' })
   autoUpdater.checkForUpdates().catch((err) => {
     isManualCheck = false
     dialog.showMessageBox({ type: 'error', title: '检查更新', message: `检查更新失败：${err?.message || '请检查网络连接'}` })
@@ -78,6 +79,12 @@ function setupAutoUpdater() {
     if (isManualCheck) {
       isManualCheck = false
       dialog.showMessageBox({ type: 'info', title: '检查更新', message: '当前已是最新版本。' })
+    }
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    if (isManualCheck) {
+      dialog.showMessageBox({ type: 'info', title: '检查更新', message: `发现新版本 v${info.version}，正在后台下载...` })
     }
   })
 
