@@ -96,6 +96,7 @@ export function parseExports(content: string, sourceFile: string, startOrder: nu
 
 /** 扫描所有文件并聚合环境变量 */
 export function scanEnvVars(scope: 'user' | 'system', shell: ShellType): { files: EnvFileInfo[], vars: EnvVar[] } {
+  if (process.platform === 'win32') return scanEnvVarsWindows(scope)
   const files = getEnvFiles(scope, shell)
   const vars: EnvVar[] = []
   let order = 0
@@ -107,4 +108,53 @@ export function scanEnvVars(scope: 'user' | 'system', shell: ShellType): { files
     vars.push(...parsed)
   }
   return { files, vars }
+}
+
+/** Windows: 从注册表读取环境变量 */
+function scanEnvVarsWindows(scope: 'user' | 'system'): { files: EnvFileInfo[], vars: EnvVar[] } {
+  const regPath = scope === 'user'
+    ? 'HKCU\\Environment'
+    : 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+  const source = scope === 'user' ? '用户注册表' : '系统注册表'
+  const files: EnvFileInfo[] = [{ path: regPath, exists: true, scope }]
+  const vars: EnvVar[] = []
+  try {
+    const output = execSync(`reg query "${regPath}"`, { encoding: 'utf-8', timeout: 5000 })
+    let order = 0
+    for (const line of output.split('\n')) {
+      const match = line.trim().match(/^(\S+)\s+REG_(?:SZ|EXPAND_SZ)\s+(.*)$/)
+      if (!match) continue
+      vars.push({ key: match[1], value: match[2], sourceFile: source, order: order++ })
+    }
+  } catch { /* 注册表读取失败 */ }
+  return { files, vars }
+}
+
+/** Windows: 读取单个注册表环境变量值 */
+export function readRegEnvValue(scope: 'user' | 'system', key: string): string {
+  const regPath = scope === 'user'
+    ? 'HKCU\\Environment'
+    : 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+  try {
+    const output = execSync(`reg query "${regPath}" /v "${key}"`, { encoding: 'utf-8', timeout: 5000 })
+    const match = output.match(/REG_(?:SZ|EXPAND_SZ)\s+(.*)/)
+    return match ? match[1].trim() : ''
+  } catch { return '' }
+}
+
+/** Windows: 写入注册表环境变量并广播变更 */
+export function writeRegEnvValue(scope: 'user' | 'system', key: string, value: string): void {
+  const regPath = scope === 'user'
+    ? 'HKCU\\Environment'
+    : 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'
+  const type = value.includes('%') ? 'REG_EXPAND_SZ' : 'REG_SZ'
+  if (scope === 'system') {
+    // 系统级需要 UAC 提权
+    const cmd = `reg add "${regPath}" /v "${key}" /t ${type} /d "${value}" /f`
+    execSync(`powershell -Command "Start-Process cmd -ArgumentList '/c','${cmd.replace(/'/g, "''")}' -Verb RunAs -Wait"`, { timeout: 30000 })
+  } else {
+    execSync(`reg add "${regPath}" /v "${key}" /t ${type} /d "${value}" /f`, { encoding: 'utf-8', timeout: 5000 })
+  }
+  // 广播 WM_SETTINGCHANGE
+  execSync(`powershell -Command "[System.Environment]::SetEnvironmentVariable('__envbox_refresh','','User')"`, { timeout: 5000 }).toString()
 }

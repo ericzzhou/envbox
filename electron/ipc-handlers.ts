@@ -17,8 +17,11 @@ function sudoWrite(tmpPath: string, targetPath: string) {
 
 function handleError(err: unknown): { success: false; error: string } {
   const msg = err instanceof Error ? err.message : '未知错误'
-  if (msg.includes('User canceled') || msg.includes('(-128)')) {
+  if (msg.includes('User canceled') || msg.includes('(-128)') || msg.includes('The operation was canceled')) {
     return { success: false, error: '用户取消了权限授权' }
+  }
+  if (msg.includes('EPERM') || msg.includes('access is denied')) {
+    return { success: false, error: '权限不足，请以管理员身份运行' }
   }
   return { success: false, error: msg }
 }
@@ -75,7 +78,6 @@ export function registerIpcHandlers() {
   ipcMain.handle('save-hosts', async (_e, entries: HostEntry[]) => {
     try {
       const hostsPath = getHostsPath()
-      // 保存前备份
       createBackup(hostsPath, 'hosts-save')
 
       const content = serializeHosts(entries)
@@ -83,7 +85,8 @@ export function registerIpcHandlers() {
       fs.writeFileSync(tmpPath, content, 'utf-8')
       try {
         if (process.platform === 'win32') {
-          fs.copyFileSync(tmpPath, hostsPath)
+          // Windows: 使用 PowerShell UAC 提权复制
+          execSync(`powershell -Command "Start-Process powershell -ArgumentList '-Command','Copy-Item -Path \\\"${tmpPath.replace(/\\/g, '\\\\')}\\\" -Destination \\\"${hostsPath.replace(/\\/g, '\\\\')}\\\" -Force' -Verb RunAs -Wait"`, { timeout: 30000 })
         } else {
           sudoWrite(tmpPath, hostsPath)
         }
