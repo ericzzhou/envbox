@@ -36,27 +36,8 @@ function createWindow() {
 }
 
 function createTray() {
-  // 用 nativeImage 绘制一个 16x16 的 "E" 图标
-  const size = 16
-  const canvas = Buffer.alloc(size * size * 4, 0) // RGBA
-  // 画一个简单的 "E" 字形（黑色像素）
-  const setPixel = (x: number, y: number) => {
-    if (x >= 0 && x < size && y >= 0 && y < size) {
-      const i = (y * size + x) * 4
-      canvas[i] = 0       // R
-      canvas[i + 1] = 0   // G
-      canvas[i + 2] = 0   // B
-      canvas[i + 3] = 255 // A
-    }
-  }
-  // 横线（上中下）
-  for (let x = 3; x <= 12; x++) { setPixel(x, 3); setPixel(x, 4) }
-  for (let x = 3; x <= 11; x++) { setPixel(x, 7); setPixel(x, 8) }
-  for (let x = 3; x <= 12; x++) { setPixel(x, 11); setPixel(x, 12) }
-  // 竖线（左）
-  for (let y = 3; y <= 12; y++) { setPixel(3, y); setPixel(4, y) }
-
-  const icon = nativeImage.createFromBuffer(canvas, { width: size, height: size })
+  const iconPath = path.join(__dirname, '../build/tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
   if (process.platform === 'darwin') icon.setTemplateImage(true)
   tray = new Tray(icon)
   tray.setToolTip('EnvBox - 环境变量管理')
