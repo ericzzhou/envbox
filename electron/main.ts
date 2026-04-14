@@ -74,14 +74,20 @@ function createTray() {
 let isManualCheck = false
 
 function checkForUpdatesManually() {
+  if (process.env.VITE_DEV_SERVER_URL) {
+    dialog.showMessageBox({ type: 'info', title: '检查更新', message: '开发模式下不支持检查更新。' })
+    return
+  }
   isManualCheck = true
-  autoUpdater.checkForUpdates().catch(() => {
+  autoUpdater.checkForUpdates().catch((err) => {
     isManualCheck = false
-    dialog.showMessageBox({ type: 'error', title: '检查更新', message: '检查更新失败，请检查网络连接。' })
+    dialog.showMessageBox({ type: 'error', title: '检查更新', message: `检查更新失败：${err?.message || '请检查网络连接'}` })
   })
 }
 
 function setupAutoUpdater() {
+  if (process.env.VITE_DEV_SERVER_URL) return
+
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
@@ -92,10 +98,10 @@ function setupAutoUpdater() {
     }
   })
 
-  autoUpdater.on('error', () => {
+  autoUpdater.on('error', (err) => {
     if (isManualCheck) {
       isManualCheck = false
-      dialog.showMessageBox({ type: 'error', title: '检查更新', message: '检查更新失败，请稍后重试。' })
+      dialog.showMessageBox({ type: 'error', title: '检查更新', message: `检查更新失败：${err?.message || '未知错误'}` })
     }
   })
 
