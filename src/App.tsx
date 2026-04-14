@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import { ConfigProvider, Tabs, Button, theme } from 'antd'
-import { LaptopOutlined, GlobalOutlined, CloudServerOutlined, HistoryOutlined } from '@ant-design/icons'
+import { ConfigProvider, Tabs, Button, Space, theme } from 'antd'
+import { LaptopOutlined, GlobalOutlined, CloudServerOutlined, HistoryOutlined, GithubOutlined } from '@ant-design/icons'
 import UserEnvTab from './components/UserEnvTab'
 import SystemEnvTab from './components/SystemEnvTab'
 import HostsTab from './components/HostsTab'
@@ -28,9 +28,12 @@ export default function App() {
           style={{ flex: 1, padding: '8px 16px 0' }}
           tabBarStyle={{ marginBottom: 0 }}
           tabBarExtraContent={
-            <Button icon={<HistoryOutlined />} onClick={() => setBackupOpen(true)}>
-              版本历史
-            </Button>
+            <Space>
+              <Button icon={<GithubOutlined />} type="text" href="https://github.com/ericzzhou/envbox" target="_blank" />
+              <Button icon={<HistoryOutlined />} onClick={() => setBackupOpen(true)}>
+                版本历史
+              </Button>
+            </Space>
           }
         />
         <BackupDrawer open={backupOpen} onClose={() => setBackupOpen(false)} onRollbackDone={handleRollbackDone} />
